@@ -1,7 +1,7 @@
 blueprint:
-  name: Sonos Media Control with Pico
-  description: Control Sonos media players with a Lutron Pico remote, including custom actions for button presses.
-  domain: automation  # Added the 'domain' field
+  name: Lutron Pico Audio Sonos
+  description: Control Sonos media players with a Lutron Pico Audio remote, including custom actions for button presses.
+  domain: automation
   input:
     pico:
       name: Pico Device
@@ -15,8 +15,7 @@ blueprint:
       description: Sonos media player to control.
       selector:
         entity:
-          domain:
-          - media_player
+          domain: media_player
           multiple: false
     join_group_on_play:
       name: Join Current Group on Play
@@ -29,8 +28,7 @@ blueprint:
       description: Select a default media source (e.g., playlist, radio station) to play when there is no active media on the Sonos.
       selector:
         entity:
-          domain:
-          - media_source
+          domain: media_source
       default: ''
     leave_group_on_middle_button:
       name: Leave Group on Middle Button
@@ -142,72 +140,18 @@ action:
           volume_level: 0.1
         target:
           entity_id: !input entity
-      - delay:
-          milliseconds: 500
+      - delay: '00:00:01'
       - service: media_player.volume_set
         data:
-          volume_level: 0.3
+          volume_level: 0.0
         target:
           entity_id: !input entity
-      - delay:
-          milliseconds: 500
-      - service: media_player.volume_set
-        data:
-          volume_level: 0.6
+      - service: media_player.play_media
+        data_template:
+          entity_id: !input entity
+          media_content_type: music
+          media_content_id: 'beep'
         target:
           entity_id: !input entity
-      - delay:
-          milliseconds: 500
-      - service: media_player.volume_set
-        data:
-          volume_level: 0.8
-        target:
-          entity_id: !input entity
-      - delay:
-          milliseconds: 500
-      - service: media_player.volume_set
-        data:
-          volume_level: 1
-        target:
-          entity_id: !input entity
-      - delay:
-          milliseconds: 1000
-      - service: media_player.volume_set
-        data:
-          volume_level: 0.8
-        target:
-          entity_id: !input entity
-      - delay:
-          milliseconds: 500
-      - service: media_player.volume_set
-        data:
-          volume_level: 0.6
-        target:
-          entity_id: !input entity
-      - delay:
-          milliseconds: 500
-      - service: media_player.volume_set
-        data:
-          volume_level: 0.3
-        target:
-          entity_id: !input entity
-      - delay:
-          milliseconds: 500
-      - service: media_player.volume_set
-        data:
-          volume_level: 0.1
-        target:
-          entity_id: !input entity
-      - delay:
-          milliseconds: 500
-      - service: media_player.volume_mute
-        data:
-          is_volume_muted: false
-        target:
-          entity_id: !input entity
-      - delay:
-          milliseconds: 500
-      - service: tts.google_translate_say
-        data:
-          entity_id: !input entity
-          message: "Beep"
+
+mode: restart
