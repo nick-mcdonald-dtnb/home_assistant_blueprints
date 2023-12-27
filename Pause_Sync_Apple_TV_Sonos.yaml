@@ -1,6 +1,6 @@
 blueprint:
   name: Sync Playback between Apple TV and Sonos
-  description: "Keep playback in sync between an Apple TV and a Sonos device in the same room. When either device starts playing, the other will automatically pause."
+  description: "Keep playback in sync between an Apple TV and a Sonos device in the same room. When either device starts playing, the other will automatically pause unless the Sonos Source is set to 'TV' and the option to disable pausing is enabled."
   domain: automation
   input:
     apple_tv_entity:
@@ -17,6 +17,12 @@ blueprint:
         entity:
           domain: media_player
           integration: sonos
+    disable_pausing_option:
+      name: Don't pause either player if Sonos source is TV
+      description: "Enable this option if your TV is connected to the Sonos product for its audio output."
+      default: false
+      selector:
+        boolean: {}
   trigger:
     - platform: state
       entity_id: "{{ apple_tv_entity }}"
@@ -28,7 +34,16 @@ blueprint:
       from: 'off'
       to: 'playing'
       id: sonos_starts_play
-  condition: []
+  condition:
+    - condition: not
+      conditions:
+        - condition: state
+          entity_id: "{{ sonos_entity }}"
+          attribute: source
+          state: "TV"
+    - condition: state
+      entity_id: input_boolean.disable_pausing_option
+      state: "off"
   action:
     - choose:
         - conditions:
