@@ -1,0 +1,215 @@
+blueprint:
+  name: Lutron Pico 5 Button - Enhanced Light Control
+  description: Control light entities with a Lutron Pico 5 Button remote, including brightness and direct color temperature control for the 'on' state, and enhanced button press handling.
+  domain: automation
+  input:
+    pico_1:
+      name: Pico Device
+      description: Pico remote to associate with light entity.
+      selector:
+        device:
+          model: PJ2-3BRL-GXX-X01 (Pico3ButtonRaiseLower)
+          multiple: false
+    entity:
+      name: Light Entity(ies)
+      description: Light entity to control.
+      selector:
+        entity:
+          domain:
+          - light
+          multiple: true
+    transition_on:
+      name: On Transition
+      description: Duration in seconds for the light entity to transition on.
+      selector:
+        number:
+          min: 0.0
+          max: 15.0
+          unit_of_measurement: seconds
+          mode: slider
+          step: 1.0
+      default: 1
+    transition_off:
+      name: Off Transition
+      description: Duration in seconds for the light entity to transition off.
+      selector:
+        number:
+          min: 0.0
+          max: 15.0
+          unit_of_measurement: seconds
+          mode: slider
+          step: 1.0
+      default: 2
+    step:
+      name: Brightness Step Percentage
+      description: Percentage of brightness change on RAISE/LOWER button press.
+      selector:
+        number:
+          min: 1.0
+          max: 33.0
+          unit_of_measurement: percentage
+          mode: slider
+          step: 1.0
+      default: 10
+    speed:
+      name: Brightness Transition Speed
+      description: Speed in milliseconds for brightness changes.
+      selector:
+        number:
+          min: 100.0
+          max: 2000.0
+          unit_of_measurement: milliseconds
+          mode: slider
+          step: 1.0
+      default: 500
+    middle_button_action:
+      name: Middle Button Override
+      description: Custom action for middle button.
+      selector:
+        action: {}
+      default:
+    on_color_temp:
+      name: On State Color Temperature
+      description: Color temperature in mireds to set when the 'on' button is pressed.
+      selector:
+        number:
+          min: 153   # Equivalent to 6500K
+          max: 500   # Equivalent to 2000K
+          unit_of_measurement: mireds
+          mode: slider
+          step: 1
+      default: 350
+
+trigger:
+- platform: device
+  device_id: !input pico_1
+  domain: lutron_caseta
+  type: press
+  subtype: 'on'
+  id: on_pressed
+- platform: device
+  device_id: !input pico_1
+  domain: lutron_caseta
+  type: press
+  subtype: raise
+  id: up_pressed
+- platform: device
+  device_id: !input pico_1
+  domain: lutron_caseta
+  type: release
+  subtype: raise
+  id: up_released
+- platform: device
+  device_id: !input pico_1
+  domain: lutron_caseta
+  type: press
+  subtype: stop
+  id: stop_pressed
+- platform: device
+  device_id: !input pico_1
+  domain: lutron_caseta
+  type: press
+  subtype: lower
+  id: down_pressed
+- platform: device
+  device_id: !input pico_1
+  domain: lutron_caseta
+  type: release
+  subtype: lower
+  id: down_released
+- platform: device
+  device_id: !input pico_1
+  domain: lutron_caseta
+  type: press
+  subtype: 'off'
+  id: off_pressed
+
+action:
+- choose:
+  - conditions:
+    - condition: trigger
+      id: on_pressed
+    sequence:
+    - service: light.turn_on
+      data:
+        transition: !input transition_on
+        brightness_pct: 100
+        color_temp: !input on_color_temp
+      target:
+        entity_id: !input entity
+  - conditions:
+    - condition: trigger
+      id: up_pressed
+    sequence:
+    - repeat:
+        sequence:
+        - service: light.turn_on
+          data:
+            brightness_step_pct: !input step
+            transition: '{{ speed / 1000 }}'
+          target:
+            entity_id: !input entity
+        - delay:
+            milliseconds: !input speed
+        until:
+        - condition: state
+          entity_id: !input entity
+          attribute: brightness
+          state: '100'
+  - conditions:
+    - condition: trigger
+      id: up_released
+    sequence:
+    - delay:
+        milliseconds: 100
+  - conditions:
+    - condition: trigger
+      id: stop_pressed
+    sequence:
+    - choose:
+      - conditions: '{{ middle_button_action != none }}'
+        sequence: !input middle_button_action
+      default:
+      - service: light.turn_on
+        data:
+          transition: !input transition_on
+          brightness_pct: 80
+          kelvin: 2700
+        target:
+          entity_id: !input entity
+  - conditions:
+    - condition: trigger
+      id: down_pressed
+    sequence:
+    - repeat:
+        sequence:
+        - service: light.turn_on
+          data:
+            brightness_step_pct: '{{ step * -1 }}'
+            transition: '{{ speed / 1000 }}'
+          target:
+            entity_id: !input entity
+        - delay:
+            milliseconds: !input speed
+        until:
+        - condition: numeric_state
+          entity_id: !input entity
+          attribute: brightness
+          below: 1
+  - conditions:
+    - condition: trigger
+      id: down_released
+    sequence:
+    - delay:
+        milliseconds: 100
+  - conditions:
+    - condition: trigger
+      id: off_pressed
+    sequence:
+    - service: light.turn_off
+      data:
+        transition: !input transition_off
+      target:
+        entity_id: !input entity
+
+mode: restart
