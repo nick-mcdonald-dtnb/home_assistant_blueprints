@@ -1,0 +1,138 @@
+blueprint:
+  name: Sonos Pico Audio Button - Control Sonos Player
+  description: Control a Sonos player with a Lutron Pico Audio Button (model PJ2-3BRL-GXX-X01). This blueprint is specifically designed for Sonos devices and includes options for joining the current Sonos group on play and specifying a default media selection. The middle button will cause the Sonos device to leave the group and play a "beep" sound on the single Sonos device.
+
+domain: automation
+input:
+  pico_1:
+    name: Pico Device
+    description: Pico remote to associate with the Sonos player.
+    selector:
+      device:
+        model: PJ2-3BRL-GXX-X01 (Pico3ButtonRaiseLower)
+        multiple: false
+  entity:
+    name: Sonos Player
+    description: Sonos player to control.
+    selector:
+      entity:
+        domain: media_player
+        integration: sonos
+        multiple: true
+  join_current_group:
+    name: Join Current Playing Group on Play
+    description: If set to true, the Sonos player will join the current Sonos group when the play button is pressed. If no other Sonos player is playing, it will use the specified default media selection.
+    selector:
+      boolean: {}
+    default: true
+  default_media_selection:
+    name: Default Media Selection
+    description: The default media selection to use when no other Sonos player is playing and the play button is pressed.
+    selector:
+      entity:
+        domain: media_player
+        integration: sonos
+    default: {}
+  middle_button_action:
+    name: Middle (Favorite) Button Override
+    description: Action to execute when the MIDDLE button is pressed. If left blank, the middle button will cause the Sonos player to leave the group and play a "beep" sound on the single Sonos device.
+    selector:
+      action: {}
+    default:
+      - service: sonos.unjoin
+        data: {}
+        target:
+          entity_id: !input entity
+      - service: sonos.snapshot
+        data: {}
+        target:
+          entity_id: !input entity
+      - service: sonos.play_media
+        data:
+          media_content_id: 'https://www.home-assistant.io/images/favicon-192x192.png'
+          media_content_type: image/png
+        target:
+          entity_id: !input entity
+
+trigger:
+- platform: event
+  event_type: lutron_caseta_button_event
+  event_data:
+    device_id: !input pico_1
+    button_type: 'on'
+    action: press
+  id: play_pause_pressed
+- platform: event
+  event_type: lutron_caseta_button_event
+  event_data:
+    device_id: !input pico_1
+    button_type: raise
+    action: press
+  id: up_pressed
+- platform: event
+  event_type: lutron_caseta_button_event
+  event_data:
+    device_id: !input pico_1
+    button_type: stop
+    action: press
+  id: middle_pressed
+- platform: event
+  event_type: lutron_caseta_button_event
+  event_data:
+    device_id: !input pico_1
+    button_type: lower
+    action: press
+  id: lower_pressed
+- platform: event
+  event_type: lutron_caseta_button_event
+  event_data:
+    device_id: !input pico_1
+    button_type: 'off'
+    action: press
+  id: play_next_pressed
+
+variables:
+  middle_button_action: !input middle_button_action
+
+condition: []
+
+action:
+- choose:
+  - conditions:
+    - condition: trigger
+      id: play_pause_pressed
+    sequence:
+    - service: media_player.media_play_pause
+      data: {}
+      target:
+        entity_id: !input entity
+  - conditions:
+    - condition: trigger
+      id: up_pressed
+    sequence:
+    - service: media_player.volume_up
+      data: {}
+      target:
+        entity_id: !input entity
+  - conditions:
+    - condition: trigger
+      id: middle_pressed
+    sequence: !input middle_button_action
+  - conditions:
+    - condition: trigger
+      id: lower_pressed
+    sequence:
+    - service: media_player.volume_down
+      data: {}
+      target:
+        entity_id: !input entity
+  - conditions:
+    - condition: trigger
+      id: play_next_pressed
+    sequence:
+    - service: media_player.media_next_track
+      data: {}
+      target:
+        entity_id: !input entity
+
+mode: restart
