@@ -35,30 +35,24 @@ blueprint:
       to: 'playing'
       id: sonos_starts_play
   condition:
-    - condition: not
+    - condition: and
       conditions:
+        - condition: not
+          conditions:
+            - condition: state
+              entity_id: "{{ sonos_entity }}"
+              attribute: source
+              state: "TV"
         - condition: state
-          entity_id: "{{ sonos_entity }}"
-          attribute: source
-          state: "TV"
-    - condition: state
-      entity_id: input_boolean.disable_pausing_option
-      state: "off"
+          entity_id: input_boolean.disable_pausing_option
+          state: "off"
   action:
-    - choose:
-        - conditions:
-            - condition: trigger
-              id: tv_starts_play
-          sequence:
-            - service: media_player.media_pause
-              target:
-                entity_id: "{{ sonos_entity }}"
-    - choose:
-        - conditions:
-            - condition: trigger
-              id: sonos_starts_play
-          sequence:
-            - service: media_player.media_pause
-              target:
-                entity_id: "{{ apple_tv_entity }}"
+    - service: media_player.media_pause
+      target:
+        entity_id: "{{ sonos_entity }}"
+      when: tv_starts_play
+    - service: media_player.media_pause
+      target:
+        entity_id: "{{ apple_tv_entity }}"
+      when: sonos_starts_play
 mode: single
