@@ -28,12 +28,10 @@ blueprint:
       entity_id: "{{ apple_tv_entity }}"
       from: 'off'
       to: 'playing'
-      id: tv_starts_play
     - platform: state
       entity_id: "{{ sonos_entity }}"
       from: 'off'
       to: 'playing'
-      id: sonos_starts_play
   condition:
     - condition: and
       conditions:
@@ -50,9 +48,7 @@ blueprint:
     - service: media_player.media_pause
       target:
         entity_id: "{{ sonos_entity }}"
-      when: tv_starts_play
     - service: media_player.media_pause
       target:
         entity_id: "{{ apple_tv_entity }}"
-      when: sonos_starts_play
 mode: single
