@@ -1,138 +1,213 @@
 blueprint:
-  name: Sonos Pico Audio Button - Control Sonos Player
-  description: Control a Sonos player with a Lutron Pico Audio Button (model PJ2-3BRL-GXX-X01). This blueprint is specifically designed for Sonos devices and includes options for joining the current Sonos group on play and specifying a default media selection. The middle button will cause the Sonos device to leave the group and play a "beep" sound on the single Sonos device.
-
-domain: automation
-input:
-  pico_1:
-    name: Pico Device
-    description: Pico remote to associate with the Sonos player.
-    selector:
-      device:
-        model: PJ2-3BRL-GXX-X01 (Pico3ButtonRaiseLower)
-        multiple: false
-  entity:
-    name: Sonos Player
-    description: Sonos player to control.
-    selector:
-      entity:
-        domain: media_player
-        integration: sonos
-        multiple: true
-  join_current_group:
-    name: Join Current Playing Group on Play
-    description: If set to true, the Sonos player will join the current Sonos group when the play button is pressed. If no other Sonos player is playing, it will use the specified default media selection.
-    selector:
-      boolean: {}
-    default: true
-  default_media_selection:
-    name: Default Media Selection
-    description: The default media selection to use when no other Sonos player is playing and the play button is pressed.
-    selector:
-      entity:
-        domain: media_player
-        integration: sonos
-    default: {}
-  middle_button_action:
-    name: Middle (Favorite) Button Override
-    description: Action to execute when the MIDDLE button is pressed. If left blank, the middle button will cause the Sonos player to leave the group and play a "beep" sound on the single Sonos device.
-    selector:
-      action: {}
-    default:
-      - service: sonos.unjoin
-        data: {}
-        target:
-          entity_id: !input entity
-      - service: sonos.snapshot
-        data: {}
-        target:
-          entity_id: !input entity
-      - service: sonos.play_media
-        data:
-          media_content_id: 'https://www.home-assistant.io/images/favicon-192x192.png'
-          media_content_type: image/png
-        target:
-          entity_id: !input entity
+  name: Sonos Media Control with Pico
+  description: Control Sonos media players with a Lutron Pico remote, including custom actions for button presses.
+  domain: automation  # Added the 'domain' field
+  input:
+    pico:
+      name: Pico Device
+      description: Pico remote to associate with Sonos media player.
+      selector:
+        device:
+          model: PJ2-3BRL-GXX-X01 (Pico3ButtonRaiseLower)
+          multiple: false
+    entity:
+      name: Sonos Media Player
+      description: Sonos media player to control.
+      selector:
+        entity:
+          domain:
+          - media_player
+          multiple: false
+    join_group_on_play:
+      name: Join Current Group on Play
+      description: Join the current Sonos group when the 'Play' button is pressed if other Sonos players are playing. If disabled, the Pico will play on the specified Sonos player only.
+      selector:
+        boolean: {}
+      default: false
+    default_media:
+      name: Default Media
+      description: Select a default media source (e.g., playlist, radio station) to play when there is no active media on the Sonos.
+      selector:
+        entity:
+          domain:
+          - media_source
+      default: ''
+    leave_group_on_middle_button:
+      name: Leave Group on Middle Button
+      description: If the 'Middle' button is pressed, the Sonos player will leave the group if it's part of one, and a 'beep' sound will be played.
+      selector:
+        boolean: {}
+      default: true
+    middle_button_custom_action:
+      name: Middle Button Custom Action
+      description: Customize the action for the 'Middle' button when pressed. Leave it blank to use the default behavior (leave group and play 'beep' sound).
+      selector:
+        action: {}
+      default: ''
 
 trigger:
-- platform: event
-  event_type: lutron_caseta_button_event
-  event_data:
-    device_id: !input pico_1
-    button_type: 'on'
-    action: press
-  id: play_pause_pressed
-- platform: event
-  event_type: lutron_caseta_button_event
-  event_data:
-    device_id: !input pico_1
-    button_type: raise
-    action: press
-  id: up_pressed
-- platform: event
-  event_type: lutron_caseta_button_event
-  event_data:
-    device_id: !input pico_1
-    button_type: stop
-    action: press
-  id: middle_pressed
-- platform: event
-  event_type: lutron_caseta_button_event
-  event_data:
-    device_id: !input pico_1
-    button_type: lower
-    action: press
-  id: lower_pressed
-- platform: event
-  event_type: lutron_caseta_button_event
-  event_data:
-    device_id: !input pico_1
-    button_type: 'off'
-    action: press
-  id: play_next_pressed
+  - platform: event
+    event_type: lutron_caseta_button_event
+    event_data:
+      device_id: !input pico
+      button_type: 'on'
+      action: press
+    id: play_pause_pressed
+  - platform: event
+    event_type: lutron_caseta_button_event
+    event_data:
+      device_id: !input pico
+      button_type: raise
+      action: press
+    id: up_pressed
+  - platform: event
+    event_type: lutron_caseta_button_event
+    event_data:
+      device_id: !input pico
+      button_type: stop
+      action: press
+    id: middle_pressed
+  - platform: event
+    event_type: lutron_caseta_button_event
+    event_data:
+      device_id: !input pico
+      button_type: lower
+      action: press
+    id: lower_pressed
+  - platform: event
+    event_type: lutron_caseta_button_event
+    event_data:
+      device_id: !input pico
+      button_type: 'off'
+      action: press
+    id: play_next_pressed
 
 variables:
-  middle_button_action: !input middle_button_action
+  middle_button_custom_action: !input middle_button_custom_action
+  current_group: ''
+  group_changed: false
 
 condition: []
 
 action:
 - choose:
   - conditions:
-    - condition: trigger
-      id: play_pause_pressed
+      - condition: trigger
+        id: play_pause_pressed
     sequence:
     - service: media_player.media_play_pause
       data: {}
       target:
         entity_id: !input entity
   - conditions:
-    - condition: trigger
-      id: up_pressed
+      - condition: trigger
+        id: up_pressed
     sequence:
     - service: media_player.volume_up
       data: {}
       target:
         entity_id: !input entity
   - conditions:
-    - condition: trigger
-      id: middle_pressed
-    sequence: !input middle_button_action
-  - conditions:
-    - condition: trigger
-      id: lower_pressed
+      - condition: trigger
+        id: lower_pressed
     sequence:
     - service: media_player.volume_down
       data: {}
       target:
         entity_id: !input entity
   - conditions:
-    - condition: trigger
-      id: play_next_pressed
+      - condition: trigger
+        id: play_next_pressed
     sequence:
     - service: media_player.media_next_track
       data: {}
       target:
         entity_id: !input entity
-
-mode: restart
+  - conditions:
+      - condition: trigger
+        id: middle_pressed
+    sequence:
+    - choose:
+      - conditions: '{{ middle_button_custom_action != none }}'
+        sequence: !input middle_button_custom_action
+      default:
+      - condition: template
+        value_template: '{{ state_attr(entity, "sonos_group") is defined }}'
+      - service: media_player.unjoin
+        data: {}
+        target:
+          entity_id: !input entity
+      - service: media_player.volume_set
+        data:
+          volume_level: 0.1
+        target:
+          entity_id: !input entity
+      - delay:
+          milliseconds: 500
+      - service: media_player.volume_set
+        data:
+          volume_level: 0.3
+        target:
+          entity_id: !input entity
+      - delay:
+          milliseconds: 500
+      - service: media_player.volume_set
+        data:
+          volume_level: 0.6
+        target:
+          entity_id: !input entity
+      - delay:
+          milliseconds: 500
+      - service: media_player.volume_set
+        data:
+          volume_level: 0.8
+        target:
+          entity_id: !input entity
+      - delay:
+          milliseconds: 500
+      - service: media_player.volume_set
+        data:
+          volume_level: 1
+        target:
+          entity_id: !input entity
+      - delay:
+          milliseconds: 1000
+      - service: media_player.volume_set
+        data:
+          volume_level: 0.8
+        target:
+          entity_id: !input entity
+      - delay:
+          milliseconds: 500
+      - service: media_player.volume_set
+        data:
+          volume_level: 0.6
+        target:
+          entity_id: !input entity
+      - delay:
+          milliseconds: 500
+      - service: media_player.volume_set
+        data:
+          volume_level: 0.3
+        target:
+          entity_id: !input entity
+      - delay:
+          milliseconds: 500
+      - service: media_player.volume_set
+        data:
+          volume_level: 0.1
+        target:
+          entity_id: !input entity
+      - delay:
+          milliseconds: 500
+      - service: media_player.volume_mute
+        data:
+          is_volume_muted: false
+        target:
+          entity_id: !input entity
+      - delay:
+          milliseconds: 500
+      - service: tts.google_translate_say
+        data:
+          entity_id: !input entity
+          message: "Beep"
