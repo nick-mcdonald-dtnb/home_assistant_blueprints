@@ -1,54 +1,64 @@
 blueprint:
-  name: Sync Playback between Apple TV and Sonos
-  description: "Keep playback in sync between an Apple TV and a Sonos device in the same room. When either device starts playing, the other will automatically pause unless the Sonos Source is set to 'TV' and the option to disable pausing is enabled."
+  name: Sync Pause State Apple TV/Sonos
+  description: Synchronizes pause/play state between Apple TV and Sonos player.
   domain: automation
   input:
-    apple_tv_entity:
-      name: Apple TV
-      description: Select the Apple TV device in the same room.
-      selector:
-        entity:
-          domain: media_player
-          integration: apple_tv
-    sonos_entity:
+    sonos_player:
       name: Sonos Player
-      description: Select the Sonos device in the same room.
+      description: Select the Sonos player.
       selector:
         entity:
           domain: media_player
           integration: sonos
-    disable_pausing_option:
-      name: Don't pause either player if Sonos source is TV
-      description: "Enable this option if your TV is connected to the Sonos product for its audio output."
-      default: false
+    apple_tv:
+      name: Apple TV
+      description: Select the Apple TV device.
+      selector:
+        entity:
+          domain: media_player
+          integration: apple_tv
+    use_sonos_as_output:
+      name: Apple TV uses Sonos as output
+      description: Enable this to ensure the Sonos player is not paused when its input is set to "TV".
       selector:
         boolean: {}
-  trigger:
-    - platform: state
-      entity_id: "{{ apple_tv_entity }}"
-      from: 'off'
-      to: 'playing'
-    - platform: state
-      entity_id: "{{ sonos_entity }}"
-      from: 'off'
-      to: 'playing'
-  condition:
-    - condition: and
-      conditions:
-        - condition: not
-          conditions:
-            - condition: state
-              entity_id: "{{ sonos_entity }}"
-              attribute: source
-              state: "TV"
-        - condition: state
-          entity_id: input_boolean.disable_pausing_option
-          state: "off"
-  action:
-    - service: media_player.media_pause
-      target:
-        entity_id: "{{ sonos_entity }}"
-    - service: media_player.media_pause
-      target:
-        entity_id: "{{ apple_tv_entity }}"
+
+trigger:
+  - platform: state
+    entity_id: !input 'apple_tv'
+    from: null
+    to: playing
+    id: tv_starts_play
+  - platform: state
+    entity_id: !input 'sonos_player'
+    from: null
+    to: playing
+    id: sonos_starts_play
+
+condition:
+  - condition: not
+    conditions:
+      - condition: state
+        entity_id: !input 'sonos_player'
+        attribute: source
+        state: TV
+        condition: template
+        value_template: "{{ not use_sonos_as_output }}"
+
+action:
+  - if:
+      - condition: trigger
+        id: tv_starts_play
+    then:
+      - service: media_player.media_pause
+        target:
+          entity_id: !input 'sonos_player'
+  - if:
+      - condition: trigger
+        id: sonos_starts_play
+    then:
+      - service: media_player.media_pause
+        target:
+          entity_id: !input 'apple_tv'
+
 mode: single
