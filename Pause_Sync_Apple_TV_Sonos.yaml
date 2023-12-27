@@ -1,0 +1,49 @@
+blueprint:
+  name: Sync Playback between Apple TV and Sonos
+  description: "Keep playback in sync between an Apple TV and a Sonos device in the same room. When either device starts playing, the other will automatically pause."
+  domain: automation
+  input:
+    apple_tv_entity:
+      name: Apple TV
+      description: Select the Apple TV device in the same room.
+      selector:
+        entity:
+          domain: media_player
+          integration: apple_tv
+    sonos_entity:
+      name: Sonos Player
+      description: Select the Sonos device in the same room.
+      selector:
+        entity:
+          domain: media_player
+          integration: sonos
+  trigger:
+    - platform: state
+      entity_id: "{{ apple_tv_entity }}"
+      from: 'off'
+      to: 'playing'
+      id: tv_starts_play
+    - platform: state
+      entity_id: "{{ sonos_entity }}"
+      from: 'off'
+      to: 'playing'
+      id: sonos_starts_play
+  condition: []
+  action:
+    - choose:
+        - conditions:
+            - condition: trigger
+              id: tv_starts_play
+          sequence:
+            - service: media_player.media_pause
+              target:
+                entity_id: "{{ sonos_entity }}"
+    - choose:
+        - conditions:
+            - condition: trigger
+              id: sonos_starts_play
+          sequence:
+            - service: media_player.media_pause
+              target:
+                entity_id: "{{ apple_tv_entity }}"
+mode: single
