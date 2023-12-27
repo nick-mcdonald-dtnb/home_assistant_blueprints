@@ -21,6 +21,7 @@ blueprint:
       selector:
         entity:
           domain: media_player
+          integration: sonos
           multiple: false
 
 trigger:
