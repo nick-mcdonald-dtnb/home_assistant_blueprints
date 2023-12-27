@@ -1,0 +1,81 @@
+blueprint:
+  name: Lutron Pico Paddle - Light Control
+  description: Control light entities with a Lutron Pico Paddle remote, including brightness and color temperature control.
+  domain: automation
+  input:
+    pico_paddle:
+      name: Pico Paddle Device
+      description: Pico Paddle remote to associate with light entity.
+      selector:
+        device:
+          model: PJ2-1P-GXX (PaddleSwitchPico)
+          multiple: false
+    entity:
+      name: Light Entity(ies)
+      description: Light entity to control.
+      selector:
+        entity:
+          domain:
+          - light
+          multiple: true
+    transition_time:
+      name: Transition Time
+      description: Duration in seconds for the light entity to transition on or off.
+      selector:
+        number:
+          min: 0.0
+          max: 15.0
+          unit_of_measurement: seconds
+          mode: slider
+          step: 0.5
+      default: 2
+    on_color_temp:
+      name: On State Color Temperature
+      description: Color temperature in mireds to set when the 'on' button is pressed.
+      selector:
+        number:
+          min: 153   # Equivalent to 6500K
+          max: 500   # Equivalent to 2000K
+          unit_of_measurement: mireds
+          mode: slider
+          step: 1
+      default: 350
+
+trigger:
+  - platform: device
+    device_id: !input pico_paddle
+    domain: lutron_caseta
+    type: press
+    subtype: Button 0
+    id: paddle_on
+  - platform: device
+    device_id: !input pico_paddle
+    domain: lutron_caseta
+    type: press
+    subtype: Button 2
+    id: paddle_off
+
+action:
+  - choose:
+    - conditions:
+        - condition: trigger
+          id: paddle_on
+      sequence:
+        - service: light.turn_on
+          data:
+            transition: !input transition_time
+            brightness_pct: 100
+            color_temp: !input on_color_temp
+          target:
+            entity_id: !input entity
+    - conditions:
+        - condition: trigger
+          id: paddle_off
+      sequence:
+        - service: light.turn_off
+          data:
+            transition: !input transition_time
+          target:
+            entity_id: !input entity
+
+mode: single
