@@ -38,12 +38,9 @@ trigger:
 condition:
   - condition: template
     value_template: >
-      {% if not use_sonos_as_output %}
-        true
-      {% else %}
-        {{ state_attr(states(sonos_player), 'source') != 'TV' }}
-      {% endif %}
-
+      {{ not use_sonos_as_output or
+         state_attr('input_select.sonos_player', 'source') != 'TV' }}
+         
 action:
   - if:
       - condition: trigger
