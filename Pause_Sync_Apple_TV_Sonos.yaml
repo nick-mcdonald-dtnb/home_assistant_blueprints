@@ -36,14 +36,13 @@ trigger:
     id: sonos_starts_play
 
 condition:
-  - condition: not
-    conditions:
-      - condition: state
-        entity_id: !input 'sonos_player'
-        attribute: source
-        state: TV
-        condition: template
-        value_template: "{{ not use_sonos_as_output }}"
+  - condition: template
+    value_template: >
+      {% if not use_sonos_as_output %}
+        true
+      {% else %}
+        {{ state_attr(states(sonos_player), 'source') != 'TV' }}
+      {% endif %}
 
 action:
   - if:
