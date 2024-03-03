@@ -142,6 +142,8 @@ action:
           - conditions: "{{ 12 <= now().hour < 18 }}"
             sequence:
               - service: scene.turn_on
+                data:
+                  transition: !input 'transition_on'
                 target:
                   entity_id: !input 'afternoon_scene'
           - conditions: "{{ 18 <= now().hour < 20 }}"
@@ -193,7 +195,7 @@ action:
     sequence:
       - service: light.turn_off
         data:
-          transition: "{{ input.transition_off }}"
+          transition: !input 'transition_off'
         target:
           entity_id: !input 'entity'
 
