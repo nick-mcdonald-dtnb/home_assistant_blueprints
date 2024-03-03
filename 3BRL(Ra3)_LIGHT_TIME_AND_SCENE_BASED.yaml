@@ -137,6 +137,8 @@ action:
           - conditions: "{{ 6 <= now().hour < 12 }}"
             sequence:
               - service: scene.turn_on
+                data:
+                  transition: !input 'transition_on'
                 target:
                   entity_id: !input 'morning_scene'
           - conditions: "{{ 12 <= now().hour < 18 }}"
@@ -149,16 +151,22 @@ action:
           - conditions: "{{ 18 <= now().hour < 20 }}"
             sequence:
               - service: scene.turn_on
+                data:
+                  transition: !input 'transition_on'
                 target:
                   entity_id: !input 'evening_scene'
           - conditions: "{{ 20 <= now().hour < 23 }}"
             sequence:
               - service: scene.turn_on
+                data:
+                  transition: !input 'transition_on'
                 target:
                   entity_id: !input 'late_evening_scene'
           - conditions: "{{ 23 <= now().hour or now().hour < 6 }}"
             sequence:
               - service: scene.turn_on
+                data:
+                  transition: !input 'transition_on'
                 target:
                   entity_id: !input 'overnight_scene'
   - conditions:
