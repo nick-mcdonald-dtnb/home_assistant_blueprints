@@ -184,36 +184,35 @@ action:
   - conditions:
     - condition: trigger
       id: up_pressed
-  sequence:
-    - repeat:
-        sequence:
-          - service: light.turn_on
-            data:
-              entity_id: !input 'entity'
-              brightness_step_pct: "{{ step }}"
-              transition: "{{ speed / 1000 }}"
-          - delay:
-              milliseconds: !input 'speed'
-        until:
-          - condition: trigger
-            id: up_released
+      sequence:
+        - repeat:
+            sequence:
+              - service: light.turn_on
+                data:
+                  entity_id: !input 'entity'
+                  brightness_step_pct: "{{ step }}"
+                  transition: "{{ speed / 1000 }}"
+              - delay:
+                  milliseconds: !input 'speed'
+            until:
+              - condition: trigger
+                id: up_released
   - conditions:
     - condition: trigger
       id: down_pressed
-  sequence:
-    - repeat:
-        sequence:
-          - service: light.turn_on
-            data:
-              entity_id: !input 'entity'
-              brightness_step_pct: "{{ -step }}"
-              transition: "{{ speed / 1000 }}"
-          - delay:
-              milliseconds: !input 'speed'
-        until:
-          - condition: trigger
-            id: down_released
-
+      sequence:
+        - repeat:
+            sequence:
+              - service: light.turn_on
+                data:
+                  entity_id: !input 'entity'
+                  brightness_step_pct: "{{ -step }}"
+                  transition: "{{ speed / 1000 }}"
+              - delay:
+                  milliseconds: !input 'speed'
+            until:
+              - condition: trigger
+                id: down_released
   - conditions:
       - condition: trigger
         id: off_pressed
