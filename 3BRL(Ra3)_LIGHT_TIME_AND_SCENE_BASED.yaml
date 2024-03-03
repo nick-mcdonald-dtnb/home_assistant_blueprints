@@ -8,15 +8,14 @@ blueprint:
       description: Pico remote to associate with light entity.
       selector:
         device:
-          model: PJ2-3BRL-XXX-L01 (Pico3ButtonRaiseLower)
+          model: PJ2-3BRL-XXX-L01
           multiple: false
     entity:
       name: Light Entity(ies)
       description: Light entity to control.
       selector:
         entity:
-          domain:
-          - light
+          domain: light
           multiple: true
     transition_on:
       name: Default Transition On
@@ -62,12 +61,6 @@ blueprint:
           mode: slider
           step: 1.0
       default: 500
-    middle_button_action:
-      name: Middle Button Override
-      description: Custom action for middle button.
-      selector:
-        action: {}
-      default:
     morning_scene:
       name: Morning Scene
       description: Scene to activate during the morning time window (6:00 AM to 12:00 PM).
@@ -104,33 +97,31 @@ blueprint:
           domain: scene
           multiple: false
 
+variables:
+  step: !input 'step'
+  speed: !input 'speed'
+
 trigger:
 - platform: device
-  device_id: !input pico_1
+  device_id: !input 'pico_1'
   domain: lutron_caseta
   type: press
   subtype: 'on'
   id: on_pressed
 - platform: device
-  device_id: !input pico_1
+  device_id: !input 'pico_1'
   domain: lutron_caseta
   type: press
   subtype: raise
   id: up_pressed
 - platform: device
-  device_id: !input pico_1
-  domain: lutron_caseta
-  type: press
-  subtype: stop
-  id: stop_pressed
-- platform: device
-  device_id: !input pico_1
+  device_id: !input 'pico_1'
   domain: lutron_caseta
   type: press
   subtype: lower
   id: down_pressed
 - platform: device
-  device_id: !input pico_1
+  device_id: !input 'pico_1'
   domain: lutron_caseta
   type: press
   subtype: 'off'
@@ -139,82 +130,71 @@ trigger:
 action:
 - choose:
   - conditions:
-    - condition: trigger
-      id: on_pressed
+      - condition: trigger
+        id: on_pressed
     sequence:
-    - choose:
-      - conditions: "{{ 6 <= now().hour < 12 }}"  # Morning time window
-        sequence:
-        - service: scene.turn_on
-          target:
-            entity_id: !input morning_scene
-      - conditions: "{{ 12 <= now().hour < 18 }}"  # Afternoon time window
-        sequence:
-        - service: scene.turn_on
-          target:
-            entity_id: !input afternoon_scene
-      - conditions: "{{ 18 <= now().hour < 20 }}"  # Evening time window
-        sequence:
-        - service: scene.turn_on
-          target:
-            entity_id: !input evening_scene
-      - conditions: "{{ 20 <= now().hour < 23 }}"  # Late evening time window
-        sequence:
-        - service: scene.turn_on
-          target:
-            entity_id: !input late_evening_scene
-      - conditions: "{{ 23 <= now().hour or now().hour < 6 }}"  # Overnight time window
-        sequence:
-        - service: scene.turn_on
-          target:
-            entity_id: !input overnight_scene
+      - choose:
+          - conditions: "{{ 6 <= now().hour < 12 }}"
+            sequence:
+              - service: scene.turn_on
+                target:
+                  entity_id: !input 'morning_scene'
+          - conditions: "{{ 12 <= now().hour < 18 }}"
+            sequence:
+              - service: scene.turn_on
+                target:
+                  entity_id: !input 'afternoon_scene'
+          - conditions: "{{ 18 <= now().hour < 20 }}"
+            sequence:
+              - service: scene.turn_on
+                target:
+                  entity_id: !input 'evening_scene'
+          - conditions: "{{ 20 <= now().hour < 23 }}"
+            sequence:
+              - service: scene.turn_on
+                target:
+                  entity_id: !input 'late_evening_scene'
+          - conditions: "{{ 23 <= now().hour or now().hour < 6 }}"
+            sequence:
+              - service: scene.turn_on
+                target:
+                  entity_id: !input 'overnight_scene'
   - conditions:
-    - condition: trigger
-      id: off_pressed
+      - condition: trigger
+        id: up_pressed
     sequence:
-    - service: light.turn_off
-      target:
-        entity_id: !input entity
+      - repeat:
+          sequence:
+            - service: light.turn_on
+              data:
+                entity_id: !input 'entity'
+                brightness_step_pct: "{{ step }}"
+                transition: "{{ speed / 1000 }}"
+          until:
+            - condition: template
+              value_template: "{{ is_state_attr('light.' ~ entity, 'brightness', 255) }}"
   - conditions:
-    - condition: trigger
-      id: up_pressed
+      - condition: trigger
+        id: down_pressed
     sequence:
-    - repeat:
-        sequence:
-        - service: light.turn_on
-          data:
-            brightness_step_pct: '{{ step }}'
-            transition: '{{ speed / 1000 }}'
-          target:
-            entity_id: !input entity
-        - delay:
-            milliseconds: !input speed
-        until:
-        - condition: template
-          value_template: "{{ state_attr('light.' + entity_id, 'brightness') == 100 }}"
+      - repeat:
+          sequence:
+            - service: light.turn_on
+              data:
+                entity_id: !input 'entity'
+                brightness_step_pct: "{{ -step }}"
+                transition: "{{ speed / 1000 }}"
+          until:
+            - condition: template
+              value_template: "{{ is_state_attr('light.' ~ entity, 'brightness', 0) }}"
   - conditions:
-    - condition: trigger
-      id: down_pressed
+      - condition: trigger
+        id: off_pressed
     sequence:
-    - repeat:
-        sequence:
-        - service: light.turn_on
-          data:
-            brightness_step_pct: '{{ step * -1 }}'
-            transition: '{{ speed / 1000 }}'
-          target:
-            entity_id: !input entity
-        - delay:
-            milliseconds: !input speed
-        until:
-        - condition: template
-          value_template: "{{ state_attr('light.' + entity_id, 'brightness') == 1 }}"
-  - conditions:
-    - condition: trigger
-      id: stop_pressed
-    sequence:
-    - choose:
-      - conditions: '{{ middle_button_action != none }}'
-        sequence: !input middle_button_action
+      - service: light.turn_off
+        data:
+          transition: "{{ transition_off }}"
+        target:
+          entity_id: !input 'entity'
 
 mode: restart
