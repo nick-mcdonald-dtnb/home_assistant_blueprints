@@ -8,7 +8,7 @@ blueprint:
       description: Pico remote to associate with light entity.
       selector:
         device:
-          model: PJ2-3BRL-XXX-L01
+          model: PJ2-3BRL-XXX-L01 (Pico3ButtonRaiseLower)
           multiple: false
     entity:
       name: Light Entity(ies)
