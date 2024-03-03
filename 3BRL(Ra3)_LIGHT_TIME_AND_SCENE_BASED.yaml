@@ -117,9 +117,21 @@ trigger:
 - platform: device
   device_id: !input 'pico_1'
   domain: lutron_caseta
+  type: release
+  subtype: raise
+  id: up_released
+- platform: device
+  device_id: !input 'pico_1'
+  domain: lutron_caseta
   type: press
   subtype: lower
   id: down_pressed
+- platform: device
+  device_id: !input 'pico_1'
+  domain: lutron_caseta
+  type: release
+  subtype: lower
+  id: down_released
 - platform: device
   device_id: !input 'pico_1'
   domain: lutron_caseta
@@ -170,33 +182,38 @@ action:
                 target:
                   entity_id: !input 'overnight_scene'
   - conditions:
-      - condition: trigger
-        id: up_pressed
-    sequence:
-      - repeat:
-          sequence:
-            - service: light.turn_on
-              data:
-                entity_id: !input 'entity'
-                brightness_step_pct: "{{ step }}"
-                transition: "{{ speed / 1000 }}"
-          until:
-            - condition: template
-              value_template: "{{ is_state_attr('light.' ~ entity, 'brightness', 255) }}"
+    - condition: trigger
+      id: up_pressed
+  sequence:
+    - repeat:
+        sequence:
+          - service: light.turn_on
+            data:
+              entity_id: !input 'entity'
+              brightness_step_pct: "{{ step }}"
+              transition: "{{ speed / 1000 }}"
+          - delay:
+              milliseconds: !input 'speed'
+        until:
+          - condition: trigger
+            id: up_released
   - conditions:
-      - condition: trigger
-        id: down_pressed
-    sequence:
-      - repeat:
-          sequence:
-            - service: light.turn_on
-              data:
-                entity_id: !input 'entity'
-                brightness_step_pct: "{{ -step }}"
-                transition: "{{ speed / 1000 }}"
-          until:
-            - condition: template
-              value_template: "{{ is_state_attr('light.' ~ entity, 'brightness', 0) }}"
+    - condition: trigger
+      id: down_pressed
+  sequence:
+    - repeat:
+        sequence:
+          - service: light.turn_on
+            data:
+              entity_id: !input 'entity'
+              brightness_step_pct: "{{ -step }}"
+              transition: "{{ speed / 1000 }}"
+          - delay:
+              milliseconds: !input 'speed'
+        until:
+          - condition: trigger
+            id: down_released
+
   - conditions:
       - condition: trigger
         id: off_pressed
