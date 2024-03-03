@@ -1,1 +1,220 @@
+blueprint:
+  name: Lutron Pico 5 Button - Time Based Light Control
+  description: Control light entities with a Lutron Pico 5 Button remote, including brightness and direct color temperature control for the 'on' state, with time-based scene selection.
+  domain: automation
+  input:
+    pico_1:
+      name: Pico Device
+      description: Pico remote to associate with light entity.
+      selector:
+        device:
+          model: PJ2-3BRL-XXX-L01 (Pico3ButtonRaiseLower)
+          multiple: false
+    entity:
+      name: Light Entity(ies)
+      description: Light entity to control.
+      selector:
+        entity:
+          domain:
+          - light
+          multiple: true
+    transition_on:
+      name: Default Transition On
+      description: Default duration in seconds for the light entity to transition on.
+      selector:
+        number:
+          min: 0.0
+          max: 15.0
+          unit_of_measurement: seconds
+          mode: slider
+          step: 1.0
+      default: 2
+    transition_off:
+      name: Default Transition Off
+      description: Default duration in seconds for the light entity to transition off.
+      selector:
+        number:
+          min: 0.0
+          max: 15.0
+          unit_of_measurement: seconds
+          mode: slider
+          step: 1.0
+      default: 2
+    step:
+      name: Brightness Step Percentage
+      description: Percentage of brightness change on RAISE/LOWER button press.
+      selector:
+        number:
+          min: 1.0
+          max: 33.0
+          unit_of_measurement: percentage
+          mode: slider
+          step: 1.0
+      default: 10
+    speed:
+      name: Brightness Transition Speed
+      description: Speed in milliseconds for brightness changes.
+      selector:
+        number:
+          min: 100.0
+          max: 2000.0
+          unit_of_measurement: milliseconds
+          mode: slider
+          step: 1.0
+      default: 500
+    middle_button_action:
+      name: Middle Button Override
+      description: Custom action for middle button.
+      selector:
+        action: {}
+      default:
+    morning_scene:
+      name: Morning Scene
+      description: Scene to activate during the morning time window (6:00 AM to 12:00 PM).
+      selector:
+        entity:
+          domain: scene
+          multiple: false
+    afternoon_scene:
+      name: Afternoon Scene
+      description: Scene to activate during the afternoon time window (12:00 PM to 6:00 PM).
+      selector:
+        entity:
+          domain: scene
+          multiple: false
+    evening_scene:
+      name: Evening Scene
+      description: Scene to activate during the evening time window (6:00 PM to 8:00 PM).
+      selector:
+        entity:
+          domain: scene
+          multiple: false
+    late_evening_scene:
+      name: Late Evening Scene
+      description: Scene to activate during the late evening time window (8:00 PM to 11:00 PM).
+      selector:
+        entity:
+          domain: scene
+          multiple: false
+    overnight_scene:
+      name: Overnight Scene
+      description: Scene to activate during the overnight time window (11:00 PM to 6:00 AM).
+      selector:
+        entity:
+          domain: scene
+          multiple: false
 
+trigger:
+- platform: device
+  device_id: !input pico_1
+  domain: lutron_caseta
+  type: press
+  subtype: 'on'
+  id: on_pressed
+- platform: device
+  device_id: !input pico_1
+  domain: lutron_caseta
+  type: press
+  subtype: raise
+  id: up_pressed
+- platform: device
+  device_id: !input pico_1
+  domain: lutron_caseta
+  type: press
+  subtype: stop
+  id: stop_pressed
+- platform: device
+  device_id: !input pico_1
+  domain: lutron_caseta
+  type: press
+  subtype: lower
+  id: down_pressed
+- platform: device
+  device_id: !input pico_1
+  domain: lutron_caseta
+  type: press
+  subtype: 'off'
+  id: off_pressed
+
+action:
+- choose:
+  - conditions:
+    - condition: trigger
+      id: on_pressed
+    sequence:
+    - choose:
+      - conditions: "{{ 6 <= now().hour < 12 }}"  # Morning time window
+        sequence:
+        - service: scene.turn_on
+          target:
+            entity_id: !input morning_scene
+      - conditions: "{{ 12 <= now().hour < 18 }}"  # Afternoon time window
+        sequence:
+        - service: scene.turn_on
+          target:
+            entity_id: !input afternoon_scene
+      - conditions: "{{ 18 <= now().hour < 20 }}"  # Evening time window
+        sequence:
+        - service: scene.turn_on
+          target:
+            entity_id: !input evening_scene
+      - conditions: "{{ 20 <= now().hour < 23 }}"  # Late evening time window
+        sequence:
+        - service: scene.turn_on
+          target:
+            entity_id: !input late_evening_scene
+      - conditions: "{{ 23 <= now().hour or now().hour < 6 }}"  # Overnight time window
+        sequence:
+        - service: scene.turn_on
+          target:
+            entity_id: !input overnight_scene
+  - conditions:
+    - condition: trigger
+      id: off_pressed
+    sequence:
+    - service: light.turn_off
+      target:
+        entity_id: !input entity
+  - conditions:
+    - condition: trigger
+      id: up_pressed
+    sequence:
+    - repeat:
+        sequence:
+        - service: light.turn_on
+          data:
+            brightness_step_pct: '{{ step }}'
+            transition: '{{ speed / 1000 }}'
+          target:
+            entity_id: !input entity
+        - delay:
+            milliseconds: !input speed
+        until:
+        - condition: template
+          value_template: "{{ state_attr('light.' + entity_id, 'brightness') == 100 }}"
+  - conditions:
+    - condition: trigger
+      id: down_pressed
+    sequence:
+    - repeat:
+        sequence:
+        - service: light.turn_on
+          data:
+            brightness_step_pct: '{{ step * -1 }}'
+            transition: '{{ speed / 1000 }}'
+          target:
+            entity_id: !input entity
+        - delay:
+            milliseconds: !input speed
+        until:
+        - condition: template
+          value_template: "{{ state_attr('light.' + entity_id, 'brightness') == 1 }}"
+  - conditions:
+    - condition: trigger
+      id: stop_pressed
+    sequence:
+    - choose:
+      - conditions: '{{ middle_button_action != none }}'
+        sequence: !input middle_button_action
+
+mode: restart
