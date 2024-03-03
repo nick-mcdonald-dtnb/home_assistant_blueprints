@@ -1,5 +1,5 @@
 blueprint:
-  name: Lutron Pico 5 Button - Time Based Light Control
+  name: Lutron Pico 5 Button (RA3) - Time Based Light Control
   description: Control light entities with a Lutron Pico 5 Button remote, including brightness and direct color temperature control for the 'on' state, with time-based scene selection.
   domain: automation
   input:
