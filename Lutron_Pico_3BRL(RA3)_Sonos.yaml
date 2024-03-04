@@ -1,5 +1,5 @@
 blueprint:
-  name: Lutron Pico Audio for Sonos
+  name: Lutron Pico Audio (RA3) for Sonos
   description: Control Sonos devices with a Lutron Pico Remote, including group management.
   domain: automation
   input:
