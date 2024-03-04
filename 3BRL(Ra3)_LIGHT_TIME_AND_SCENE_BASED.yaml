@@ -61,6 +61,12 @@ blueprint:
           mode: slider
           step: 1.0
       default: 500
+    middle_button_action:
+      name: Middle Button Override
+      description: Custom action for middle button.
+      selector:
+        action: {}
+      default:
     morning_scene:
       name: Morning Scene
       description: Scene to activate during the morning time window (6:00 AM to 12:00 PM).
@@ -222,5 +228,12 @@ action:
           transition: !input 'transition_off'
         target:
           entity_id: !input 'entity'
+  - conditions:
+    - condition: trigger
+      id: stop_pressed
+    sequence:
+    - choose:
+      - conditions: '{{ middle_button_action != none }}'
+        sequence: !input middle_button_action
 
 mode: restart
