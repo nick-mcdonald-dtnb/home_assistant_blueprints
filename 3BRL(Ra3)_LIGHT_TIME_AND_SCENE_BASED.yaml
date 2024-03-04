@@ -118,6 +118,12 @@ trigger:
   device_id: !input 'pico_1'
   domain: lutron_caseta
   type: press
+  subtype: 'stop'
+  id: stop_pressed
+- platform: device
+  device_id: !input 'pico_1'
+  domain: lutron_caseta
+  type: press
   subtype: raise
   id: up_pressed
 - platform: device
