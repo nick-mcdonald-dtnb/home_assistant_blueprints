@@ -1,0 +1,77 @@
+blueprint:
+  name: Lutron Pico Audio for Sonos
+  description: Control Sonos devices with a Lutron Pico Remote, including group management.
+  domain: automation
+  input:
+    join_playing_group_on_play:
+      name: Join Playing Group on Play
+      description: If enabled, join a group that is currently playing on Play button press.
+      selector:
+        boolean:
+    pico_remote:
+      name: Pico Remote
+      description: Lutron Pico remote to control Sonos.
+      selector:
+        device:
+          model: PJ2-3BRL-GXX-X01 (Pico3ButtonRaiseLower)
+          multiple: false
+    sonos_entity:
+      name: Sonos Entity
+      description: Sonos device to be controlled.
+      selector:
+        entity:
+          domain: media_player
+          integration: sonos
+          multiple: false
+
+trigger:
+  - platform: event
+    event_type: lutron_caseta_button_event
+    event_data:
+      device_id: !input pico_remote
+
+action:
+  - variables:
+      button_type: "{{ trigger.event.data.button_type }}"
+      action_type: "{{ trigger.event.data.action }}"
+  - choose:
+      # Middle Button Press - Group Management
+      - conditions:
+          - "{{ button_type == 'stop' and action_type == 'press' }}"
+        sequence:
+          - service: python_script.sonos_group_manager
+            data:
+              action: 'leave_group'
+              entity_id: !input sonos_entity
+      # Play/Pause Button
+      - conditions:
+          - "{{ button_type == 'on' and action_type == 'press' }}"
+        sequence:
+          - service: python_script.sonos_group_manager
+            data:
+              action: 'play_pause'
+              entity_id: !input sonos_entity
+              join_playing_group: !input join_playing_group_on_play
+      # Volume Up
+      - conditions:
+          - "{{ button_type == 'raise' and action_type == 'press' }}"
+        sequence:
+          - service: media_player.volume_up
+            target:
+              entity_id: !input sonos_entity
+      # Volume Down
+      - conditions:
+          - "{{ button_type == 'lower' and action_type == 'press' }}"
+        sequence:
+          - service: media_player.volume_down
+            target:
+              entity_id: !input sonos_entity
+      # Next Track
+      - conditions:
+          - "{{ button_type == 'off' and action_type == 'press' }}"
+        sequence:
+          - service: media_player.media_next_track
+            target:
+              entity_id: !input sonos_entity
+
+mode: restart
